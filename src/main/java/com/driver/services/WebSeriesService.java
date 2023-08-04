@@ -5,6 +5,11 @@ import com.driver.model.ProductionHouse;
 import com.driver.model.WebSeries;
 import com.driver.repository.ProductionHouseRepository;
 import com.driver.repository.WebSeriesRepository;
+import com.driver.transformer.WebSeriesTransformer;
+
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,8 +28,34 @@ public class WebSeriesService {
         //Incase the seriesName is already present in the Db throw Exception("Series is already present")
         //use function written in Repository Layer for the same
         //Dont forget to save the production and webseries Repo
+        WebSeries webSeries=WebSeriesTransformer.convertDtoToEntity(webSeriesEntryDto);
+        WebSeries checkWebSeries=webSeriesRepository.findBySeriesName(webSeries.getSeriesName());
+        if(checkWebSeries!=null){
+            throw new Exception("Series is already present");
+        }
+        int id=webSeriesEntryDto.getProductionHouseId();
+        ProductionHouse productionHouse=productionHouseRepository.findById(id).get();
+        if(productionHouse==null){
+            throw new Exception("Production house is not present");
+        }
+        webSeries.setProductionHouse(productionHouse);
+        webSeries=webSeriesRepository.save(webSeries);
+        
+        List<WebSeries> seriesList = productionHouse.getWebSeriesList();
+        seriesList.add(webSeries);
 
-        return null;
+        double productionHouseRating = 0;
+        for(WebSeries series : seriesList){
+            productionHouseRating += series.getRating();
+        }
+        int seriesCount = seriesList.size();
+        productionHouseRating = productionHouseRating / seriesCount;
+
+        productionHouse.setRatings(productionHouseRating);
+
+        productionHouseRepository.save(productionHouse);
+
+        return webSeries.getId();
     }
 
 }
